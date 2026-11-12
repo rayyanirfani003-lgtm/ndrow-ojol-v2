@@ -105,6 +105,7 @@
       const n = Number($("ndTarget").value);
       if (!Number.isSafeInteger(n) || n < 1) return notice("Target minimal Rp1.", true);
       await saveSetting("dailyTarget", n);
+      await window.NDROW_REFRESH_DASHBOARD?.();
       await renderProsegra();
       notice("Target harian berhasil disimpan.");
     });
@@ -336,6 +337,7 @@
       const n = Number($("settingsTarget").value);
       if (!Number.isSafeInteger(n) || n < 1) return notice("Target minimal Rp1.", true);
       await saveSetting("dailyTarget", n);
+      await window.NDROW_REFRESH_DASHBOARD?.();
       notice("Pengaturan berhasil disimpan.");
     });
     $("exportData").addEventListener("click", async () => {

@@ -2,7 +2,6 @@
   "use strict";
 
   const $ = id => document.getElementById(id);
-  const TARGET = 250000;
   let currentType = "pemasukan";
   let selectedTip = 0;
 
@@ -180,16 +179,20 @@
   async function refreshDashboard() {
     try {
       const result = await window.NDROW_TRANSACTIONS.calculate();
+      const targetSetting = await window.NDROW_DB.get("settings", "dailyTarget");
+      const target = Number(targetSetting?.value) > 0
+        ? Number(targetSetting.value) : 250000;
       const income = result.income;
       const expense = result.expense;
-      const percent = Math.min(100, Math.round(income / TARGET * 100));
+      const percent = Math.min(100, Math.round(income / target * 100));
 
       if ($("todayIncome")) $("todayIncome").textContent = money(income);
+      if ($("dailyTargetAmount")) $("dailyTargetAmount").textContent = money(target);
       if ($("targetPercent")) $("targetPercent").textContent = percent + "%";
       if ($("progressFill")) $("progressFill").style.width = percent + "%";
       if ($("targetCaption")) {
         $("targetCaption").textContent =
-          money(Math.max(0, TARGET - income)) + " lagi untuk mencapai target";
+          money(Math.max(0, target - income)) + " lagi untuk mencapai target";
       }
       if ($("incomeTotal")) $("incomeTotal").textContent = money(income);
       if ($("expenseTotal")) $("expenseTotal").textContent = money(expense);
@@ -248,6 +251,8 @@
 
   let currentPage = "Beranda";
   let currentHistoryFilter = "semua";
+  let currentHistoryPeriod = "harian";
+  let historyAnchor = new Date();
 
   function ensureHistoryPage() {
     let page = $("historyPage");
@@ -261,29 +266,95 @@
       <div class="history-top">
         <p class="eyebrow">NDROW OJOL · CATATAN KEUANGAN</p>
         <h1>Riwayat Transaksi</h1>
-        <p class="history-subtitle">Semua pemasukan dan pengeluaranmu.</p>
+        <p class="history-subtitle">Pantau pemasukan dan pengeluaranmu.</p>
       </div>
+
+      <div class="history-period-tabs" role="group" aria-label="Periode riwayat">
+        <button type="button" class="history-period active" data-period="harian">Harian</button>
+        <button type="button" class="history-period" data-period="bulanan">Bulanan</button>
+        <button type="button" class="history-period" data-period="tahunan">Tahunan</button>
+      </div>
+
+      <div class="history-period-nav">
+        <button type="button" id="historyPrev" aria-label="Periode sebelumnya">‹</button>
+        <strong id="historyPeriodLabel">Hari ini</strong>
+        <button type="button" id="historyNext" aria-label="Periode berikutnya">›</button>
+      </div>
+
       <section class="history-summary">
-        <div><small>Total Pemasukan</small><strong id="historyIncome">Rp0</strong></div>
-        <div><small>Total Pengeluaran</small><strong id="historyExpense">Rp0</strong></div>
-        <div><small>Selisih Bersih</small><strong id="historyNet">Rp0</strong></div>
+        <div class="history-income-card">
+          <small>Total Pemasukan</small>
+          <strong id="historyIncome">Rp0</strong>
+        </div>
+        <div class="history-expense-card">
+          <small>Total Pengeluaran</small>
+          <strong id="historyExpense">Rp0</strong>
+        </div>
+        <div class="history-net-card">
+          <small>Selisih Bersih</small>
+          <strong id="historyNet">Rp0</strong>
+        </div>
       </section>
+
       <div class="history-filters" role="group" aria-label="Filter transaksi">
         <button type="button" data-history-filter="semua" class="history-filter active">Semua</button>
         <button type="button" data-history-filter="pemasukan" class="history-filter">Pemasukan</button>
         <button type="button" data-history-filter="pengeluaran" class="history-filter">Pengeluaran</button>
       </div>
+
+      <button type="button" id="openDetailHistory" class="history-detail-button">
+        Lihat Rincian Riwayat
+      </button>
+
       <section id="historyList" class="history-list" aria-live="polite"></section>
       <section id="historyEmpty" class="empty-state" hidden>
         <div class="empty-icon">▤</div>
         <strong>Belum ada transaksi</strong>
-        <p>Transaksi sesuai filter akan muncul di sini.</p>
+        <p>Transaksi pada periode ini akan muncul di sini.</p>
       </section>
     `;
 
     const nav = document.querySelector(".bottom-nav");
     if (nav) nav.before(page);
     else document.body.appendChild(page);
+
+    page.querySelectorAll("[data-period]").forEach(button => {
+      button.addEventListener("click", () => {
+        currentHistoryPeriod = button.dataset.period;
+        page.querySelectorAll("[data-period]").forEach(item =>
+          item.classList.toggle("active", item === button)
+        );
+        renderHistory();
+      });
+    });
+
+    page.querySelector("#historyPrev").addEventListener("click", () => {
+      if (currentHistoryPeriod === "harian") {
+        historyAnchor.setDate(historyAnchor.getDate() - 1);
+      } else if (currentHistoryPeriod === "bulanan") {
+        historyAnchor.setDate(1);
+        historyAnchor.setMonth(historyAnchor.getMonth() - 1);
+      } else {
+        historyAnchor.setDate(1);
+        historyAnchor.setMonth(0);
+        historyAnchor.setFullYear(historyAnchor.getFullYear() - 1);
+      }
+      renderHistory();
+    });
+
+    page.querySelector("#historyNext").addEventListener("click", () => {
+      if (currentHistoryPeriod === "harian") {
+        historyAnchor.setDate(historyAnchor.getDate() + 1);
+      } else if (currentHistoryPeriod === "bulanan") {
+        historyAnchor.setDate(1);
+        historyAnchor.setMonth(historyAnchor.getMonth() + 1);
+      } else {
+        historyAnchor.setDate(1);
+        historyAnchor.setMonth(0);
+        historyAnchor.setFullYear(historyAnchor.getFullYear() + 1);
+      }
+      renderHistory();
+    });
 
     page.querySelectorAll("[data-history-filter]").forEach(button => {
       button.addEventListener("click", () => {
@@ -295,9 +366,12 @@
       });
     });
 
+    page.querySelector("#openDetailHistory").addEventListener("click", () => {
+      showPage("Rincian Riwayat");
+    });
+
     return page;
   }
-
 
   async function renderSavings() {
     const display = $("savingsTotalDisplay");
@@ -352,6 +426,8 @@
 
     if (dashboard) dashboard.hidden = name !== "Beranda";
     history.hidden = name !== "Riwayat";
+    const detailHistory = document.getElementById("detailHistoryPage");
+    if (detailHistory) detailHistory.hidden = name !== "Rincian Riwayat";
     if (analysis) analysis.hidden = name !== "Analisa";
     const savings = document.getElementById("savingsPage");
     const toolPage = document.getElementById("toolsPage");
@@ -359,25 +435,81 @@
     if (savings) savings.hidden = name !== "Tabungan";
 
     document.querySelectorAll(".nav-item").forEach(button => {
-      button.classList.toggle("active", button.dataset.page === name);
+      button.classList.toggle(
+        "active",
+        button.dataset.page === (name === "Rincian Riwayat" ? "Riwayat" : name)
+      );
     });
 
     if (name === "Riwayat") renderHistory();
+    if (name === "Rincian Riwayat") window.NDROW_RENDER_DETAIL_HISTORY?.();
     if (name === "Tabungan") renderSavings();
     window.scrollTo(0, 0);
   }
 
   async function renderHistory() {
-    const page = ensureHistoryPage();
+    ensureHistoryPage();
+
     const list = $("historyList");
     const empty = $("historyEmpty");
-    if (!list) return;
+    if (!list || !window.NDROW_TRANSACTIONS) return;
 
     try {
       const items = await window.NDROW_TRANSACTIONS.getAll();
-      const income = items.filter(item => item.type === "pemasukan")
+
+      const makeDateKey = item => {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(item.localDate || "")) {
+          return item.localDate;
+        }
+        const date = new Date(item.date);
+        if (Number.isNaN(date.getTime())) return "";
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+      };
+
+      const selectedYear = historyAnchor.getFullYear();
+      const selectedMonth = historyAnchor.getMonth();
+      const yearText = String(selectedYear);
+      const monthText = String(selectedMonth + 1).padStart(2, "0");
+      const dayText = String(historyAnchor.getDate()).padStart(2, "0");
+
+      let startKey;
+      let endKey;
+      let periodLabel;
+
+      if (currentHistoryPeriod === "harian") {
+        startKey = `${yearText}-${monthText}-${dayText}`;
+        endKey = startKey;
+        periodLabel = historyAnchor.toLocaleDateString("id-ID", {
+          weekday: "long", day: "numeric", month: "long", year: "numeric"
+        });
+      } else if (currentHistoryPeriod === "bulanan") {
+        startKey = `${yearText}-${monthText}-01`;
+        endKey = `${yearText}-${monthText}-31`;
+        periodLabel = historyAnchor.toLocaleDateString("id-ID", {
+          month: "long", year: "numeric"
+        });
+      } else {
+        startKey = `${yearText}-01-01`;
+        endKey = `${yearText}-12-31`;
+        periodLabel = yearText;
+      }
+
+      $("historyPeriodLabel").textContent = periodLabel;
+
+      const periodItems = items.filter(item => {
+        const key = makeDateKey(item);
+        return key && key >= startKey && key <= endKey;
+      });
+
+      const income = periodItems
+        .filter(item => item.type === "pemasukan")
         .reduce((sum, item) => sum + Number(item.amount || 0), 0);
-      const expense = items.filter(item => item.type === "pengeluaran")
+
+      const expense = periodItems
+        .filter(item => item.type === "pengeluaran")
         .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
       $("historyIncome").textContent = money(income);
@@ -385,74 +517,119 @@
       $("historyNet").textContent = money(income - expense);
 
       const filtered = currentHistoryFilter === "semua"
-        ? items
-        : items.filter(item => item.type === currentHistoryFilter);
+        ? periodItems
+        : periodItems.filter(item => item.type === currentHistoryFilter);
 
       list.replaceChildren();
       if (empty) empty.hidden = filtered.length > 0;
 
+      const groups = new Map();
+
       filtered.forEach(item => {
-        const row = document.createElement("article");
-        row.className = "history-row";
+        const dateKey = makeDateKey(item);
+        const groupKey = currentHistoryPeriod === "tahunan"
+          ? dateKey.slice(0, 7)
+          : dateKey;
 
-        const icon = document.createElement("span");
-        icon.className = "transaction-icon " +
-          (item.type === "pemasukan" ? "income-symbol" : "expense-symbol");
-        icon.textContent = item.type === "pemasukan" ? "+" : "−";
+        if (!groups.has(groupKey)) groups.set(groupKey, []);
+        groups.get(groupKey).push(item);
+      });
 
-        const details = document.createElement("div");
-        details.className = "history-details";
+      const sortedGroups = [...groups.entries()].sort((a, b) =>
+        b[0].localeCompare(a[0])
+      );
 
-        const title = document.createElement("strong");
-        title.textContent = item.description || "Transaksi";
+      sortedGroups.forEach(([groupKey, groupItems]) => {
+        const heading = document.createElement("div");
+        heading.className = "history-group-heading";
 
-        const meta = document.createElement("small");
-        const date = new Date(item.date);
-        const dateText = Number.isNaN(date.getTime())
-          ? (item.localDate || "Tanggal tidak tersedia")
-          : date.toLocaleString("id-ID", {
-              day: "2-digit", month: "short", year: "numeric",
-              hour: "2-digit", minute: "2-digit"
+        const headingTitle = document.createElement("strong");
+        if (currentHistoryPeriod === "tahunan") {
+          const [y, m] = groupKey.split("-").map(Number);
+          headingTitle.textContent = new Date(y, m - 1, 1)
+            .toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+        } else {
+          const [y, m, d] = groupKey.split("-").map(Number);
+          headingTitle.textContent = new Date(y, m - 1, d)
+            .toLocaleDateString("id-ID", {
+              weekday: "long", day: "numeric", month: "long", year: "numeric"
             });
-        meta.textContent = [
-          dateText, item.platform, item.service, item.payment
-        ].filter(Boolean).join(" · ");
+        }
 
-        const amount = document.createElement("strong");
-        amount.className = item.type === "pemasukan"
-          ? "transaction-income" : "transaction-expense";
-        amount.textContent =
-          (item.type === "pemasukan" ? "+" : "−") + money(item.amount);
+        const groupNet = groupItems.reduce((sum, item) =>
+          sum + (item.type === "pemasukan" ? 1 : -1) * Number(item.amount || 0), 0
+        );
 
-        const info = document.createElement("div");
-        info.className = "history-info";
-        info.append(title, meta, amount);
-        details.appendChild(info);
+        const headingNet = document.createElement("small");
+        headingNet.textContent = "Bersih " + money(groupNet);
+        heading.append(headingTitle, headingNet);
+        list.appendChild(heading);
 
-        const remove = document.createElement("button");
-        remove.type = "button";
-        remove.className = "history-delete";
-        remove.textContent = "Hapus";
-        remove.setAttribute("aria-label", "Hapus transaksi " + (item.description || ""));
-        remove.addEventListener("click", async () => {
-          if (!window.confirm(
-            "Hapus transaksi " + (item.description || "ini") +
-            " sebesar " + money(item.amount) + "?"
-          )) return;
+        groupItems.forEach(item => {
+          const row = document.createElement("article");
+          row.className = "history-row";
 
-          try {
-            await window.NDROW_TRANSACTIONS.remove(item.id);
-            await refreshDashboard();
-            await renderHistory();
-            toast("Transaksi berhasil dihapus.");
-          } catch (error) {
-            console.error(error);
-            toast("Transaksi gagal dihapus.");
-          }
+          const icon = document.createElement("span");
+          icon.className = "transaction-icon " +
+            (item.type === "pemasukan" ? "income-symbol" : "expense-symbol");
+          icon.textContent = item.type === "pemasukan" ? "+" : "−";
+
+          const details = document.createElement("div");
+          details.className = "history-details";
+
+          const title = document.createElement("strong");
+          title.textContent = item.description || "Transaksi";
+
+          const meta = document.createElement("small");
+          const date = new Date(item.date);
+          const timeText = !Number.isNaN(date.getTime())
+            ? date.toLocaleTimeString("id-ID", {
+                hour: "2-digit", minute: "2-digit"
+              })
+            : "";
+
+          meta.textContent = [
+            timeText, item.platform, item.service, item.payment
+          ].filter(Boolean).join(" · ");
+
+          details.append(title, meta);
+
+          const amount = document.createElement("strong");
+          amount.className = item.type === "pemasukan"
+            ? "transaction-income"
+            : "transaction-expense";
+          amount.textContent =
+            (item.type === "pemasukan" ? "+" : "−") + money(item.amount);
+
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "history-delete";
+          remove.textContent = "Hapus";
+          remove.setAttribute(
+            "aria-label",
+            "Hapus transaksi " + (item.description || "")
+          );
+
+          remove.addEventListener("click", async () => {
+            if (!window.confirm(
+              "Hapus transaksi " + (item.description || "ini") +
+              " sebesar " + money(item.amount) + "?"
+            )) return;
+
+            try {
+              await window.NDROW_TRANSACTIONS.remove(item.id);
+              await refreshDashboard();
+              await renderHistory();
+              toast("Transaksi berhasil dihapus.");
+            } catch (error) {
+              console.error(error);
+              toast("Transaksi gagal dihapus.");
+            }
+          });
+
+          row.append(icon, details, amount, remove);
+          list.appendChild(row);
         });
-
-        row.append(icon, details, amount, remove);
-        list.appendChild(row);
       });
     } catch (error) {
       console.error("Gagal memuat riwayat:", error);
@@ -461,6 +638,7 @@
   }
 
   window.NDROW_SHOW_PAGE = showPage;
+  window.NDROW_REFRESH_DASHBOARD = refreshDashboard;
 
   function init() {
     $("addTransaction")?.addEventListener("click", openQuickMenu);

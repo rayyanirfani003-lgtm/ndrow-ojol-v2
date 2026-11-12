@@ -7,7 +7,88 @@
   <title>NDROW OJOL</title>
   <link rel="stylesheet" href="css/app.css">
 </head>
-<body>
+<body class="auth-locked">
+  <section class="splash-screen" id="splashScreen">
+    <div class="splash-glow splash-glow-one"></div>
+    <div class="splash-glow splash-glow-two"></div>
+
+    <div class="splash-content">
+      <div class="splash-logo">
+        <span>N</span>
+        <i></i>
+      </div>
+
+      <div class="splash-brand">NDROW <b>OJOL</b></div>
+      <div class="splash-subtitle">DRIVER FINANCE</div>
+
+      <div class="splash-line"><span></span></div>
+      <p>Perjalananmu. Penghasilanmu.<br>Masa depanmu.</p>
+    </div>
+
+    <div class="splash-bottom">DRIVE SMARTER <span>•</span> LIVE BETTER</div>
+  </section>
+  <section class="welcome-screen" id="welcomeScreen" hidden>
+    <div class="welcome-screen-glow"></div>
+    <div class="welcome-screen-content">
+      <div class="welcome-screen-logo">
+        <span>N</span><i></i>
+      </div>
+      <div class="welcome-screen-brand">NDROW <b>OJOL</b></div>
+      <div class="welcome-screen-sub">DRIVER FINANCE</div>
+
+      <div class="welcome-screen-copy">
+        <span>YOUR JOURNEY, YOUR FINANCE</span>
+        <h1>Kelola Penghasilan.<br><b>Kendalikan Masa Depan.</b></h1>
+        <p>Satu aplikasi untuk membantu perjalanan dan keuanganmu setiap hari.</p>
+      </div>
+
+      <button type="button" class="welcome-start" id="welcomeStart">
+        Mulai Sekarang <span>→</span>
+      </button>
+      <div class="welcome-screen-note">AMAN • PRAKTIS • TERKENDALI</div>
+    </div>
+  </section>
+
+  <section class="auth-screen" id="authScreen" hidden>
+    <div class="auth-glow auth-glow-one"></div>
+    <div class="auth-glow auth-glow-two"></div>
+
+    <div class="auth-content">
+      <div class="auth-brand">
+        <div class="auth-logo">
+          <span>N</span><i></i>
+        </div>
+        <div class="auth-brand-name">NDROW <b>OJOL</b></div>
+        <div class="auth-brand-sub">DRIVER FINANCE</div>
+      </div>
+
+      <form id="authForm" class="auth-panel">
+        <div class="auth-panel-icon">✦</div>
+        <h2 id="authHeading">Selamat Datang</h2>
+        <p id="authDescription">Lindungi aplikasi dengan PIN pribadi.</p>
+
+        <label for="authPin">PIN KEAMANAN 6 DIGIT</label>
+        <input id="authPin" type="password" inputmode="numeric"
+          pattern="[0-9]{6}" maxlength="6" minlength="6"
+          autocomplete="off" placeholder="••••••" required>
+
+        <div id="authConfirmGroup">
+          <label for="authConfirm">ULANGI PIN</label>
+          <input id="authConfirm" type="password" inputmode="numeric"
+            pattern="[0-9]{6}" maxlength="6" minlength="6"
+            autocomplete="off" placeholder="Ulangi 6 digit PIN">
+        </div>
+
+        <p id="authMessage" class="auth-message" role="alert"></p>
+        <button id="authSubmit" class="auth-submit" type="submit">
+          Mulai Sekarang <span>→</span>
+        </button>
+        <div class="auth-secure"><span>●</span> Keamanan PIN di perangkatmu</div>
+      </form>
+    </div>
+
+    <div class="auth-footer">NDROW OJOL <span>•</span> DRIVE SMARTER</div>
+  </section>
   <header class="topbar">
     <div class="brand">
       <div class="brand-icon">N</div>
@@ -36,7 +117,7 @@
       <div class="target-row">
         <div>
           <div class="small-label">TARGET HARIAN</div>
-          <div class="target-amount">Rp250.000</div>
+          <div class="target-amount" id="dailyTargetAmount">Rp250.000</div>
         </div>
         <div class="target-percent" id="targetPercent">0%</div>
       </div>
@@ -265,6 +346,8 @@
   <script src="js/transactions.js"></script>
   <script src="js/analysis.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/detail-history.js"></script>
   <script src="js/tools.js"></script>
+  <script src="js/auth.js"></script>
 </body>
 </html>
